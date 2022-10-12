@@ -1,2 +1,20 @@
-# 03-Juicy-Brick-Breaker
-Brick Breaker Game for C220
+# Brick-Breaker
+
+A starting place for Project 03
+
+
+```
+# Project Name
+Context and date
+
+Description
+
+## Implementation
+Which features you included
+
+## References
+
+## Future Development
+
+## Created by
+```
