@@ -18,9 +18,10 @@ func hit(_ball):
 	die()
 
 func die():
+	var brick_exp = get_node("/root/Game/Effects/Brick_Exp")
+	brick_exp.play()
 	dying = true
 	collision_layer = 0
-	$ColorRect.hide()
 	Global.update_score(score)
 	if not Global.feverish:
 		Global.update_fever(score)
@@ -32,3 +33,4 @@ func die():
 			var powerup = Powerup.instance()
 			powerup.position = position
 			Powerup_Container.call_deferred("add_child", powerup)
+	queue_free()

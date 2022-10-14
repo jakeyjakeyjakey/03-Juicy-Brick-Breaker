@@ -13,8 +13,18 @@ margin_left = -23.0
 margin_top = -23.0
 margin_right = 23.0
 margin_bottom = 23.0
+color = Color( 0.0470588, 0.635294, 0.988235, 1 )
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource( 1 )
+
+[node name="Label" type="Label" parent="."]
+margin_left = 159.0
+margin_top = 498.0
+margin_right = 579.0
+margin_bottom = 715.0
+align = 1
+valign = 1
+autowrap = true
 
 [connection signal="body_entered" from="." to="." method="_on_Powerup_body_entered"]

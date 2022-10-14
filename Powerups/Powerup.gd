@@ -23,6 +23,6 @@ func _physics_process(_delta):
 		queue_free()
 
 func _on_Powerup_body_entered(body):
-	if body.name == "Paddle":
+	if body.name == "Paddle1":
 		if payload != null:
 			body.powerup(payload.instance())

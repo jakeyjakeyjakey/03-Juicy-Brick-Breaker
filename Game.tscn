@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=2]
+[gd_scene load_steps=18 format=2]
 
 [ext_resource path="res://Brick/Brick_Container.gd" type="Script" id=1]
 [ext_resource path="res://Paddle/Paddle.tscn" type="PackedScene" id=2]
@@ -9,89 +9,179 @@
 [ext_resource path="res://UI/HUD.tscn" type="PackedScene" id=7]
 [ext_resource path="res://UI/Instructions.tscn" type="PackedScene" id=8]
 [ext_resource path="res://Effects/Fever.gd" type="Script" id=9]
+[ext_resource path="res://Assets/static.mp3" type="AudioStream" id=10]
+[ext_resource path="res://Assets/explosion.mp3" type="AudioStream" id=11]
+
+[sub_resource type="Shader" id=5]
+code = "shader_type canvas_item;
+
+//uniform vec3 color_replace = vec3(1.0,1.0,0.0);
+uniform int OCTAVE = 12;
+uniform float timescale = 3.0;
+uniform vec4 CLOUD1_COL: hint_color = vec4(0.41,0.64,0.78,0.4);
+uniform vec4 CLOUD2_COL: hint_color = vec4(0.99,0.79,0.46,0.2);
+uniform vec4 CLOUD3_COL: hint_color = vec4(0.81,0.31,0.59,1.0);
+uniform vec4 CLOUD4_COL: hint_color = vec4(0.27,0.15,0.33,1.0);
+uniform vec4 SPACE: hint_color = vec4(0.09,0.06,0.28,0.3);
+uniform float zoomScale = 6.0;
+uniform float size = 10.0;
+uniform float starscale = 20.0;
+uniform float prob: hint_range(0.0,1.0) = 0.98;
+
+float rand(vec2 input){
+	return fract(sin(dot(input,vec2(23.53,44.0)))*42350.45);
+}
+
+float perlin(vec2 input){
+	vec2 i = floor(input);
+	vec2 j = fract(input);
+	vec2 coord = smoothstep(0.,1.,j);
+	
+	float a = rand(i);
+	float b = rand(i+vec2(1.0,0.0));
+	float c = rand(i+vec2(0.0,1.0));
+	float d = rand(i+vec2(1.0,1.0));
+
+	return mix(mix(a,b,coord.x),mix(c,d,coord.x),coord.y);
+}
+
+float fbm(vec2 input){
+	float value = 0.0;
+	float scale = 0.5;
+	
+	for(int i = 0; i < OCTAVE; i++){
+		value += perlin(input)*scale;
+		input*=2.0;
+		scale*=0.5;
+	}
+	return value;
+}
+
+float fbmCloud(vec2 input, float minimum){
+	float value = 0.0;
+	float scale = 0.5;
+	
+	for(int i = 0; i < OCTAVE; i++){
+		value += perlin(input)*scale;
+		input*=2.0;
+		scale*=0.5;
+	}
+	return smoothstep(0.,1.,(smoothstep(minimum,1.,value)-minimum)/(1.0-minimum));
+}
+
+float fbmCloud2(vec2 input, float minimum){
+	float value = 0.0;
+	float scale = 0.5;
+	
+	for(int i = 0; i < OCTAVE; i++){
+		value += perlin(input)*scale;
+		input*=2.0;
+		scale*=0.5;
+	}
+	return (smoothstep(minimum,1.,value)-minimum)/(1.0-minimum);
+}
+
+void fragment(){
+	vec4 originalColor = texture(TEXTURE, UV);
+	float timescaled = TIME * timescale;
+	//vec2 zoomUV = vec2(zoomScale * UV.x + UV.x*0.04*TIME*sin(0.07*TIME), zoomScale * UV.y + UV.y*0.05*TIME*cos(0.06*TIME));
+	vec2 zoomUV2 = vec2(zoomScale * UV.x + 0.03*timescaled*sin(0.07*timescaled), zoomScale * UV.y + 0.03*timescaled*cos(0.06*timescaled));
+	vec2 zoomUV3 = vec2(zoomScale * UV.x + 0.027*timescaled*sin(0.07*timescaled), zoomScale * UV.y + 0.025*timescaled*cos(0.06*timescaled));
+	vec2 zoomUV4 = vec2(zoomScale * UV.x + 0.021*timescaled*sin(0.07*timescaled), zoomScale * UV.y + 0.021*timescaled*cos(0.07*timescaled));
+	float tide = 0.05*sin(TIME);
+	float tide2 = 0.06*cos(0.3*TIME);
+	//if(color_replace == originalColor.rgb){
+		vec4 nebulaTexture = vec4(SPACE.rgb, 0.5+0.2*sin(0.23*TIME +UV.x-UV.y));
+		nebulaTexture += fbmCloud2(zoomUV3, 0.24 + tide)*CLOUD1_COL;
+		nebulaTexture += fbmCloud(zoomUV2*0.9, 0.33 - tide)*CLOUD2_COL;
+		nebulaTexture = mix(nebulaTexture,CLOUD3_COL,fbmCloud(vec2(0.9*zoomUV4.x,0.9*zoomUV4.y), 0.25+tide2));
+		nebulaTexture = mix(nebulaTexture,CLOUD4_COL,fbmCloud(zoomUV3*0.7+2.0, 0.4+tide2));
+		vec2 zoomstar = starscale*zoomUV2;
+		vec2 pos = floor(zoomstar / size);
+		float starValue = rand(pos);
+		if(starValue>prob){
+			vec2 center = size * pos + vec2(size, size) * 0.5;
+			float t = 0.9 + 0.2 * sin(TIME * 8.0 + (starValue - prob) / (1.0 - prob) * 45.0);
+			float color = 1.0 - distance(zoomstar, center) / (0.5 * size);
+			nebulaTexture = mix(nebulaTexture, vec4(1.0,1.0,1.0,1.0),smoothstep(0.,1.,color * t / (abs(zoomstar.y - center.y)) * t / (abs(zoomstar.x - center.x))));
+		} else {
+			zoomstar *= 5.0;
+			pos = floor(zoomstar / size);
+			float starValue2 = rand(pos + vec2(13.0,13.0));
+			if(starValue2 >= 0.95){
+				vec2 center = size * pos + vec2(size, size) * 0.5;
+				float t = 0.9 + 0.2 * sin(TIME * 8.0 + (starValue - prob) / (1.0 - prob) * 45.0);
+				float color = 1.0 - distance(zoomstar, center) / (0.5 * size);
+				nebulaTexture = mix(nebulaTexture, vec4(1.0,1.0,1.0,1.0),fbmCloud(pos,0.0)*smoothstep(0.,1.,color * t / (abs(zoomstar.y - center.y)) * t / (abs(zoomstar.x - center.x))));
+			}
+		}
+		COLOR = vec4(nebulaTexture.rgb, 1.0);
+		//COLOR = vec4(nebulaTexture.rgb,nebulaTexture.a * 1.2)
+	//} else {
+	//	COLOR = originalColor;
+	//}
+}"
+
+[sub_resource type="ShaderMaterial" id=6]
+shader = SubResource( 5 )
+shader_param/OCTAVE = 12
+shader_param/timescale = 3.0
+shader_param/CLOUD1_COL = Color( 0.41, 0.64, 0.78, 0.4 )
+shader_param/CLOUD2_COL = Color( 0.99, 0.79, 0.46, 0.2 )
+shader_param/CLOUD3_COL = Color( 0.81, 0.31, 0.59, 1 )
+shader_param/CLOUD4_COL = Color( 0.27, 0.15, 0.33, 1 )
+shader_param/SPACE = Color( 0.09, 0.06, 0.28, 0.3 )
+shader_param/zoomScale = 6.0
+shader_param/size = 10.0
+shader_param/starscale = 20.0
+shader_param/prob = 0.98
 
 [sub_resource type="RectangleShape2D" id=1]
-extents = Vector2( 100, 753 )
+extents = Vector2( 100, 642.063 )
 
 [sub_resource type="RectangleShape2D" id=2]
-extents = Vector2( 1060.5, 100 )
+extents = Vector2( 387.5, 100 )
+
+[sub_resource type="Shader" id=3]
+code = "shader_type canvas_item;
+
+uniform vec4 color_gap: hint_color = vec4(0.25);
+uniform vec4 color_stripe: hint_color = vec4(200,0, 204, 1.0);
+uniform float divisions = 8.0; // increase for more stripe density
+uniform float stripe_bias = 2.9; // 1.0 means no stripes; 2.0 means stripes and gaps are equal size
+uniform float speed = 0.1;
+uniform float angle = 0.7854; // in radians
+
+void fragment() {
+	float w = cos(angle) * UV.x + sin(angle) * UV.y - speed * TIME;
+	if (floor(mod(w * divisions, stripe_bias)) < 0.0001) {
+		COLOR = color_gap;
+	} else {
+		COLOR = color_stripe;
+	}
+}"
+
+[sub_resource type="ShaderMaterial" id=4]
+shader = SubResource( 3 )
+shader_param/color_gap = Color( 0.25, 0.25, 0.25, 0.25 )
+shader_param/color_stripe = Color( 200, 0, 204, 1 )
+shader_param/divisions = 8.0
+shader_param/stripe_bias = 2.9
+shader_param/speed = 0.1
+shader_param/angle = 0.7854
 
 [node name="Game" type="Node2D"]
 script = ExtResource( 4 )
 
-[node name="Wall_Container" type="Node2D" parent="."]
-
-[node name="Wall_Left" type="StaticBody2D" parent="Wall_Container"]
-script = ExtResource( 6 )
-
-[node name="ColorRect" type="ColorRect" parent="Wall_Container/Wall_Left"]
-margin_left = -190.0
-margin_top = -100.0
-margin_right = 10.0
-margin_bottom = 1168.0
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall_Container/Wall_Left"]
-position = Vector2( -90, 653 )
-shape = SubResource( 1 )
-
-[node name="Wall_Right" type="StaticBody2D" parent="Wall_Container"]
-position = Vector2( 1920, 0 )
-script = ExtResource( 6 )
-
-[node name="ColorRect" type="ColorRect" parent="Wall_Container/Wall_Right"]
-margin_left = -10.0
-margin_top = -100.0
-margin_right = 190.0
-margin_bottom = 1159.0
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall_Container/Wall_Right"]
-position = Vector2( 85, 400 )
-shape = SubResource( 1 )
-
-[node name="Wall_Top" type="StaticBody2D" parent="Wall_Container"]
-script = ExtResource( 6 )
-
-[node name="ColorRect" type="ColorRect" parent="Wall_Container/Wall_Top"]
-margin_left = -100.0
-margin_top = -190.0
-margin_right = 2020.0
-margin_bottom = 10.0
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall_Container/Wall_Top"]
-position = Vector2( 960.5, -90 )
-shape = SubResource( 2 )
-
-[node name="Wall_Bottom" type="StaticBody2D" parent="Wall_Container"]
-position = Vector2( 0, 1170 )
-script = ExtResource( 6 )
-
-[node name="ColorRect" type="ColorRect" parent="Wall_Container/Wall_Bottom"]
-margin_left = -100.0
-margin_top = -190.0
-margin_right = 2020.0
-margin_bottom = 10.0
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall_Container/Wall_Bottom"]
-position = Vector2( 960.5, -90 )
-shape = SubResource( 2 )
-
-[node name="Brick_Container" type="Node2D" parent="."]
-script = ExtResource( 1 )
-
-[node name="Paddle_Container" type="Node2D" parent="."]
-
-[node name="Paddle" parent="Paddle_Container" instance=ExtResource( 2 )]
-position = Vector2( 960, 900 )
-
-[node name="Ball_Container" type="Node2D" parent="."]
-script = ExtResource( 3 )
-
-[node name="Powerup_Container" type="Node2D" parent="."]
-
-[node name="Fever" type="Node2D" parent="."]
-script = ExtResource( 9 )
-
-[node name="Timer" type="Timer" parent="Fever"]
+[node name="Background" type="ColorRect" parent="."]
+material = SubResource( 6 )
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+margin_left = -8.0
+margin_top = -8.0
+margin_right = 733.0
+margin_bottom = 1280.0
 
 [node name="UI" type="CanvasLayer" parent="."]
 
@@ -104,5 +194,95 @@ visible = false
 
 [node name="Instructions" parent="UI" instance=ExtResource( 8 )]
 pause_mode = 2
+
+[node name="Wall_Container" type="Node2D" parent="."]
+
+[node name="Wall_Left" type="StaticBody2D" parent="Wall_Container"]
+position = Vector2( -285, 215 )
+script = ExtResource( 6 )
+
+[node name="ColorRect" type="ColorRect" parent="Wall_Container/Wall_Left"]
+margin_left = 82.0
+margin_top = -222.0
+margin_right = 282.0
+margin_bottom = 1053.0
+color = Color( 0.454902, 0.443137, 0.443137, 1 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall_Container/Wall_Left"]
+position = Vector2( 203, 408 )
+shape = SubResource( 1 )
+
+[node name="Wall_Right" type="StaticBody2D" parent="Wall_Container"]
+position = Vector2( 2201, 119 )
+script = ExtResource( 6 )
+
+[node name="ColorRect" type="ColorRect" parent="Wall_Container/Wall_Right"]
+margin_left = -1467.0
+margin_top = -124.0
+margin_right = -1267.0
+margin_bottom = 1160.0
+color = Color( 0.454902, 0.443137, 0.443137, 1 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall_Container/Wall_Right"]
+position = Vector2( -1370, 516 )
+shape = SubResource( 1 )
+
+[node name="Wall_Top" type="StaticBody2D" parent="Wall_Container"]
+position = Vector2( 1078, 43 )
+script = ExtResource( 6 )
+
+[node name="ColorRect" type="ColorRect" parent="Wall_Container/Wall_Top"]
+margin_left = -1188.0
+margin_top = -236.0
+margin_right = -253.0
+margin_bottom = -36.0
+color = Color( 0.454902, 0.443137, 0.443137, 1 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Wall_Container/Wall_Top"]
+position = Vector2( -724, -129 )
+shape = SubResource( 2 )
+
+[node name="ColorRect" type="ColorRect" parent="Wall_Container"]
+visible = false
+material = SubResource( 4 )
+margin_left = -94.0
+margin_top = 1240.0
+margin_right = 841.0
+margin_bottom = 1440.0
+
+[node name="Brick_Container" type="Node2D" parent="."]
+scale = Vector2( 0.5, 0.5 )
+script = ExtResource( 1 )
+
+[node name="Paddle_Container" type="Node2D" parent="."]
+
+[node name="Paddle1" parent="Paddle_Container" instance=ExtResource( 2 )]
+visible = false
+position = Vector2( 340, 824 )
+scale = Vector2( 0.75, 0.75 )
+
+[node name="Ball_Container" type="Node2D" parent="."]
+script = ExtResource( 3 )
+
+[node name="Powerup_Container" type="Node2D" parent="."]
+
+[node name="Fever" type="Node2D" parent="."]
+script = ExtResource( 9 )
+
+[node name="Timer" type="Timer" parent="Fever"]
+
+[node name="Effects" type="Node2D" parent="."]
+
+[node name="Die_Sound" type="AudioStreamPlayer" parent="Effects"]
+stream = ExtResource( 10 )
+volume_db = -11.361
+
+[node name="Brick_Exp" type="AudioStreamPlayer" parent="Effects"]
+stream = ExtResource( 11 )
+volume_db = -9.063
+
+[node name="Status" type="Label" parent="."]
+margin_right = 40.0
+margin_bottom = 14.0
 
 [connection signal="timeout" from="Fever/Timer" to="Fever" method="_on_Timer_timeout"]

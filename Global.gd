@@ -1,6 +1,9 @@
 extends Node
 
 var VP = Vector2.ZERO
+onready var Ball = load("res://Ball/Ball.tscn")
+onready var Paddle = load("res://Paddle/Paddle.tscn")
+
 var level = 0
 var score = 0
 var enemy_score = 0
@@ -18,7 +21,7 @@ var fever_decay = 0.1
 var feverish = false
 
 
-export var default_starting_in = 4
+export var default_starting_in = 3
 export var default_lives = 5
 
 
@@ -36,6 +39,7 @@ func _physics_process(_delta):
 		update_fever(-fever_decay)
 	else:
 		feverish = false
+	pass
 		
 
 func _input(event):

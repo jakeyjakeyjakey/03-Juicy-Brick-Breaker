@@ -3,6 +3,8 @@ extends Node2D
 func start_fever():
 	fever()
 	$Timer.start()
+	var Status = get_node("/root/Game/Status")
+	
 
 func end_fever():
 	pass

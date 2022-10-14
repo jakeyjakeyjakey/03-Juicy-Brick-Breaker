@@ -16,9 +16,10 @@ color = Color( 0, 0, 0, 0.501961 )
 anchor_right = 1.0
 anchor_bottom = 1.0
 margin_bottom = -300.0
-text = "Brick Breaker"
+text = "Asteroid Assault"
 align = 1
 valign = 1
+uppercase = true
 
 [node name="Play" type="Button" parent="."]
 anchor_left = 0.5

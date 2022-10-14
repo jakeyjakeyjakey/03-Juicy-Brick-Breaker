@@ -1,11 +1,11 @@
 extends RigidBody2D
 
-var min_speed = 100.0
+var min_speed = 200.0
 var max_speed = 600.0
 var speed_multiplier = 1.0
 var accelerate = false
 
-var released = true
+var released = false
 
 var initial_velocity = Vector2.ZERO
 
@@ -18,7 +18,6 @@ func _ready():
 		var level = Levels.levels[Global.level]
 		min_speed *= level["multiplier"]
 		max_speed *= level["multiplier"]
-	
 
 func _on_Ball_body_entered(body):
 	if body.has_method("hit"):
@@ -32,9 +31,12 @@ func _input(event):
 
 func _integrate_forces(state):
 	if not released:
-		var paddle = get_node_or_null("/root/Game/Paddle_Container/Paddle")
-		if paddle != null:
-			state.transform.origin = Vector2(paddle.position.x + paddle.width, paddle.position.y - 30)	
+		var paddle_1 = get_node_or_null("/root/Game/Paddle_Container/Paddle1")
+		if paddle_1 != null:
+			state.transform.origin = Vector2(paddle_1.position.x + paddle_1.width, paddle_1.position.y - 30)
+		#var paddle_2 = get_node_or_null("/root/Game/Paddle_Container/Paddle2")
+		#if paddle_2 != null:
+			#state.transform.origin = Vector2(paddle_2.position.x + paddle_2.width, paddle_2.position.y + 30)
 
 	if position.y > Global.VP.y + 100:
 		die()
@@ -48,12 +50,11 @@ func _integrate_forces(state):
 	if state.linear_velocity.length() > max_speed * speed_multiplier:
 		state.linear_velocity = state.linear_velocity.normalized() * max_speed * speed_multiplier
 
-func change_size(s):
-	$ColorRect.rect_scale = s
-	$CollisionShape2D.scale = s
 
 func change_speed(s):
 	speed_multiplier = s
 
 func die():
+	var die_sound = get_node("/root/Game/Effects/Die_Sound")
+	die_sound.play()
 	queue_free()

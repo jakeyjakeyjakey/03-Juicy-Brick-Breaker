@@ -1,6 +1,36 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://UI/HUD.gd" type="Script" id=1]
+
+[sub_resource type="ShaderMaterial" id=6]
+
+[sub_resource type="Shader" id=7]
+code = "shader_type canvas_item;
+
+uniform vec4 color_gap: hint_color = vec4(0.25);
+uniform vec4 color_stripe: hint_color = vec4(.5,0, 204, 1.0);
+uniform float divisions = 2.0; // increase for more stripe density
+uniform float stripe_bias = 3; // 1.0 means no stripes; 2.0 means stripes and gaps are equal size
+uniform float speed = 2.0;
+uniform float angle = 0.7854; // in radians
+
+void fragment() {
+	float w = cos(angle) * UV.x + sin(angle) * UV.y - speed * TIME;
+	if (floor(mod(w * divisions, stripe_bias)) < 0.0001) {
+		COLOR = color_gap;
+	} else {
+		COLOR = color_stripe;
+	}
+}"
+
+[sub_resource type="ShaderMaterial" id=8]
+shader = SubResource( 7 )
+shader_param/color_gap = Color( 0.25, 0.25, 0.25, 0.25 )
+shader_param/color_stripe = Color( 0.5, 0, 204, 1 )
+shader_param/divisions = 2.0
+shader_param/stripe_bias = 3.0
+shader_param/speed = 2.0
+shader_param/angle = 0.7854
 
 [sub_resource type="StyleBoxFlat" id=1]
 bg_color = Color( 1, 1, 1, 1 )
@@ -21,24 +51,22 @@ margin_top = -29.0
 color = Color( 0, 0, 0, 0.25098 )
 
 [node name="Background2" type="ColorRect" parent="."]
+material = SubResource( 6 )
 anchor_right = 1.0
-margin_top = 10.0
-margin_bottom = 50.0
-color = Color( 0, 0, 0, 0.25098 )
+margin_top = -42.0
+margin_bottom = 99.0
+color = Color( 0.156863, 0.0117647, 0.262745, 0.443137 )
 
 [node name="Score" type="Label" parent="."]
 margin_left = 20.0
+margin_top = 11.0
 margin_right = 220.0
-margin_bottom = 60.0
-text = "Player 1 Score: "
-valign = 1
+margin_bottom = 71.0
+text = "Score:
 
-[node name="Score2" type="Label" parent="."]
-margin_left = 300.0
-margin_right = 500.0
-margin_bottom = 60.0
-text = "Player 2 Score: "
+"
 valign = 1
+uppercase = true
 
 [node name="Time" type="Label" parent="."]
 anchor_left = 1.0
@@ -51,12 +79,12 @@ align = 2
 valign = 1
 
 [node name="Fever" type="ProgressBar" parent="."]
-visible = false
+material = SubResource( 8 )
 anchor_left = 0.5
 anchor_right = 0.5
-margin_left = -200.0
+margin_left = -138.0
 margin_top = 20.0
-margin_right = 200.0
+margin_right = 262.0
 margin_bottom = 45.0
 rect_min_size = Vector2( 400, 25 )
 custom_styles/fg = SubResource( 1 )

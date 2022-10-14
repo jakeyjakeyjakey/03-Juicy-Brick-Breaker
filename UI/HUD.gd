@@ -12,10 +12,10 @@ func _ready():
 
 
 func update_score():
-	$Score.text = "Player 1 Score: " + str(Global.score)
+	$Score.text = "Score: " + str(Global.score)
 
-func update_enemy_score():
-	$Score2.text = "Player 2 Score: " + str(Global.enemy_score)
+#func update_enemy_score():
+	#$Score2.text = "Player 2 Score: " + str(Global.enemy_score)
 	
 
 
